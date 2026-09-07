@@ -41,9 +41,7 @@ class Settings(BaseModel):
 
     zepp_app_token: SecretStr = Field(alias="ZEPP_APP_TOKEN", min_length=1)
     zepp_user_id: str = Field(alias="ZEPP_USER_ID", min_length=1)
-    zepp_base_url: AnyHttpUrl = Field(
-        default="https://api-mifit.zepp.com", alias="ZEPP_BASE_URL"
-    )
+    zepp_base_url: AnyHttpUrl = Field(default="https://api-mifit.zepp.com", alias="ZEPP_BASE_URL")
     zepp_request_timeout_ms: int = Field(
         default=20_000,
         ge=1_000,
