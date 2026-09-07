@@ -69,18 +69,23 @@ class ZeppClient:
         self,
         *,
         cursor_track_id: str | None = None,
-        limit: int = 20,
+        page_count: int = 1,
     ) -> JsonObject:
-        """List workout summaries, following Zepp's track-id cursor when necessary."""
-        if not 1 <= limit <= 100:
-            raise ValueError("limit must be between 1 and 100")
+        """List one or more complete workout-history pages.
+
+        Zepp exposes a track-id cursor but no reliably documented page-size parameter.
+        Returning complete pages avoids skipping workouts when a caller asks for fewer items
+        than Zepp happens to return in one response.
+        """
+        if not 1 <= page_count <= 10:
+            raise ValueError("page_count must be between 1 and 10")
 
         collected: list[JsonObject] = []
         cursor = cursor_track_id
         next_cursor: str | None = None
         seen_cursors: set[str] = set()
 
-        while len(collected) < limit:
+        for _ in range(page_count):
             params: dict[str, str] = {"userid": self.settings.zepp_user_id}
             if cursor:
                 params["trackid"] = cursor
@@ -92,17 +97,11 @@ class ZeppClient:
             summaries = data.get("summary") or []
             if not isinstance(summaries, list):
                 raise ZeppApiError("Workout history data.summary was not a list")
-            for item in summaries:
-                if isinstance(item, dict):
-                    collected.append(item)
-                    if len(collected) >= limit:
-                        break
+            collected.extend(item for item in summaries if isinstance(item, dict))
 
             raw_next = data.get("next")
             next_cursor = str(raw_next) if raw_next not in (None, "", 0, "0") else None
-            if len(collected) >= limit or not next_cursor or not summaries:
-                break
-            if next_cursor in seen_cursors:
+            if not next_cursor or not summaries or next_cursor in seen_cursors:
                 break
             seen_cursors.add(next_cursor)
             cursor = next_cursor
@@ -110,6 +109,7 @@ class ZeppClient:
         return {
             "items": collected,
             "count": len(collected),
+            "pages_requested": page_count,
             "next_track_id": next_cursor,
         }
 
