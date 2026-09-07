@@ -74,7 +74,7 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
     )
     client = ZeppClient(settings, http_client=http)
     try:
-        result = await client.list_workouts(limit=2)
+        result = await client.list_workouts(page_count=2)
     finally:
         await http.aclose()
 
