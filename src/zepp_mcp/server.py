@@ -54,9 +54,7 @@ def create_server(client: ZeppClient | None = None) -> FastMCP:
         if not 1 <= page_count <= 10:
             raise ValueError("page_count must be between 1 and 10")
         async with use_client() as zepp:
-            return await zepp.list_workouts(
-                cursor_track_id=cursor_track_id, page_count=page_count
-            )
+            return await zepp.list_workouts(cursor_track_id=cursor_track_id, page_count=page_count)
 
     @server.tool(annotations=READ_ONLY, tags={"zepp", "workouts", "detail"})
     async def get_workout(track_id: str, source: str) -> JsonObject:
