@@ -169,8 +169,7 @@ Responsibilities only:
 Reuse the Paperless pattern:
 
 ```python
-def create_server(client: ZeppClient | None = None) -> FastMCP:
-    ...
+def create_server(client: ZeppClient | None = None) -> FastMCP: ...
 ```
 
 ### `cli.py`
