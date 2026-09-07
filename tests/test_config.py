@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import stat
+from pathlib import Path
 
 import pytest
 
@@ -28,7 +29,7 @@ def test_masked_token_does_not_expose_full_secret() -> None:
     assert "abcdefghijkl" not in str(masked)
 
 
-def test_write_and_load_config(tmp_path) -> None:
+def test_write_and_load_config(tmp_path: Path) -> None:
     path = tmp_path / "config.json"
     settings = Settings.model_validate({"ZEPP_APP_TOKEN": "secret-token", "ZEPP_USER_ID": "123"})
     write_config(settings, path)
@@ -39,7 +40,7 @@ def test_write_and_load_config(tmp_path) -> None:
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
-def test_load_rejects_unsafe_permissions(tmp_path) -> None:
+def test_load_rejects_unsafe_permissions(tmp_path: Path) -> None:
     if os.name == "nt":
         pytest.skip("POSIX permissions test")
     path = tmp_path / "config.json"
