@@ -110,10 +110,11 @@ uv run zepp-mcp config reset
 
 Checks authentication through `/users/-/profile` and returns a compact profile/connection summary.
 
-### `list_workouts(cursor_track_id=null, limit=20)`
+### `list_workouts(cursor_track_id=null, page_count=1)`
 
-Reads `/v1/sport/run/history.json`, follows Zepp's track-ID cursor as needed, and returns workout
-summaries plus `next_track_id`. Each summary contains the `trackid` and `source` used for detail.
+Reads `/v1/sport/run/history.json` and returns one or more complete Zepp result pages plus
+`next_track_id`. Complete pages are intentional because Zepp does not expose a reliably documented
+page-size parameter. Each summary contains the `trackid` and `source` used for detail.
 
 ### `get_workout(track_id, source)`
 
