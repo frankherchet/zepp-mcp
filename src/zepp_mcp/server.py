@@ -44,17 +44,19 @@ def create_server(client: ZeppClient | None = None) -> FastMCP:
     @server.tool(annotations=READ_ONLY, tags={"zepp", "workouts", "list"})
     async def list_workouts(
         cursor_track_id: str | None = None,
-        limit: int = 20,
+        page_count: int = 1,
     ) -> JsonObject:
-        """List recent workouts.
+        """List recent workouts as one or more complete Zepp history pages.
 
         Pass next_track_id from a previous response as cursor_track_id to continue.
         Each item includes the trackid and source needed by get_workout.
         """
-        if not 1 <= limit <= 100:
-            raise ValueError("limit must be between 1 and 100")
+        if not 1 <= page_count <= 10:
+            raise ValueError("page_count must be between 1 and 10")
         async with use_client() as zepp:
-            return await zepp.list_workouts(cursor_track_id=cursor_track_id, limit=limit)
+            return await zepp.list_workouts(
+                cursor_track_id=cursor_track_id, page_count=page_count
+            )
 
     @server.tool(annotations=READ_ONLY, tags={"zepp", "workouts", "detail"})
     async def get_workout(track_id: str, source: str) -> JsonObject:
