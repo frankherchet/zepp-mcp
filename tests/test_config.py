@@ -30,9 +30,7 @@ def test_masked_token_does_not_expose_full_secret() -> None:
 
 def test_write_and_load_config(tmp_path) -> None:
     path = tmp_path / "config.json"
-    settings = Settings.model_validate(
-        {"ZEPP_APP_TOKEN": "secret-token", "ZEPP_USER_ID": "123"}
-    )
+    settings = Settings.model_validate({"ZEPP_APP_TOKEN": "secret-token", "ZEPP_USER_ID": "123"})
     write_config(settings, path)
     loaded = load_config_values(path)
     assert loaded["ZEPP_APP_TOKEN"] == "secret-token"
