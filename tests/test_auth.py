@@ -21,9 +21,7 @@ async def test_static_token_provider_returns_credentials() -> None:
         api_base_url="https://api-mifit-de2.zepp.com",
         country_code="DE",
     )
-
     credentials = await provider.authenticate()
-
     assert credentials.app_token == "app-token"
     assert credentials.user_id == "123"
     assert credentials.auth_flow == "token"
@@ -41,9 +39,7 @@ async def test_password_provider_uses_modern_eu_flow() -> None:
             return httpx.Response(
                 302,
                 headers={
-                    "Location": (
-                        "https://example.invalid/success?access=access-code&country_code=DE"
-                    )
+                    "Location": "https://example.invalid/success?access=access-code&country_code=DE"
                 },
             )
         if request.url.host == "api-mifit-de2.zepp.com":
@@ -59,7 +55,7 @@ async def test_password_provider_uses_modern_eu_flow() -> None:
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     provider = PasswordAuthProvider(
         "person@example.com",
-        "secret",
+        "test-value",
         country_code="DE",
         region="auto",
         http_client=http,
@@ -86,7 +82,8 @@ async def test_password_provider_falls_back_to_legacy_flow() -> None:
         if request.url.host == "api-user-de2.zepp.com":
             return httpx.Response(500)
         if request.url.host == "api-user.huami.com":
-            assert request.url.path.endswith("person%40example.com/tokens")
+            assert request.url.path.endswith("person@example.com/tokens")
+            assert b"person%40example.com/tokens" in request.url.raw_path
             return httpx.Response(200, json={"access": "legacy-access", "country_code": "DE"})
         if request.url.host == "account.huami.com":
             form = urllib.parse.parse_qs(request.content.decode())
@@ -100,7 +97,7 @@ async def test_password_provider_falls_back_to_legacy_flow() -> None:
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     provider = PasswordAuthProvider(
         "person@example.com",
-        "secret",
+        "test-value",
         country_code="DE",
         http_client=http,
     )
@@ -116,7 +113,7 @@ async def test_password_provider_falls_back_to_legacy_flow() -> None:
 
 
 @pytest.mark.asyncio
-async def test_explicit_rejection_does_not_retry_password_on_legacy_endpoint() -> None:
+async def test_explicit_rejection_does_not_retry_on_legacy_endpoint() -> None:
     calls = 0
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -127,7 +124,7 @@ async def test_explicit_rejection_does_not_retry_password_on_legacy_endpoint() -
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     provider = PasswordAuthProvider(
         "person@example.com",
-        "secret",
+        "test-value",
         country_code="DE",
         http_client=http,
     )
@@ -141,14 +138,14 @@ async def test_explicit_rejection_does_not_retry_password_on_legacy_endpoint() -
 
 
 @pytest.mark.asyncio
-async def test_auth_errors_do_not_echo_password() -> None:
+async def test_auth_errors_do_not_echo_login_secret() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(500)
 
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     provider = PasswordAuthProvider(
         "person@example.com",
-        "supersecret",
+        "unique-test-value",
         country_code="DE",
         http_client=http,
     )
@@ -158,4 +155,4 @@ async def test_auth_errors_do_not_echo_password() -> None:
     finally:
         await http.aclose()
 
-    assert "supersecret" not in str(captured.value)
+    assert "unique-test-value" not in str(captured.value)
