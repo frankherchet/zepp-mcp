@@ -11,6 +11,17 @@ from zepp_mcp.auth import ZeppCredentials
 from zepp_mcp.config import Settings
 
 
+def test_no_command_defaults_to_stdio_server(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, Any] = {}
+    monkeypatch.setattr(cli, "_run_server", lambda args: captured.update(vars(args)))
+
+    cli.main([])
+
+    assert captured["transport"] == "stdio"
+    assert captured["host"] == "127.0.0.1"
+    assert captured["port"] == 8000
+
+
 def test_login_setup_persists_only_derived_credentials(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -58,6 +58,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Self-hosted FastMCP server for Zepp/Amazfit")
+    parser.set_defaults(transport="stdio", host="127.0.0.1", port=8000)
     parser.add_argument("--version", action="store_true", help="Show the installed version")
     subparsers = parser.add_subparsers(dest="command")
 
