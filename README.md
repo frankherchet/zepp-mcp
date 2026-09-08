@@ -6,7 +6,9 @@ typed MCP surface that can be used by Codex, Claude and other MCP clients.
 
 ## Current v0.1 scope
 
-- Local setup with `apptoken`, Zepp user ID and configurable regional API base URL.
+- Interactive Zepp account login that exchanges account/password for `apptoken` + user ID.
+- Manual token setup remains available as a fallback.
+- The account password is never written to the config file.
 - Secure local config file (`0600` on POSIX) or explicit environment overrides.
 - `stdio` transport for locally launched MCP clients.
 - Streamable HTTP transport for self-hosting.
@@ -15,33 +17,59 @@ typed MCP surface that can be used by Codex, Claude and other MCP clients.
   - `list_workouts`
   - `get_workout`
 
-See `docs/research/` for the API/architecture assessment and known unknowns.
+See `docs/research/` for the API/authentication assessment and known unknowns.
 
 ## Requirements
 
 - Python 3.11+
 - `uv`
-- A Zepp `apptoken` and user ID
-
-The initial version deliberately does not automate email/password login. Authentication is kept
-pluggable while the token-based API surface is validated across regions/accounts.
+- A Zepp/Amazfit account, or an existing Zepp `apptoken` + user ID
 
 ## Install for development
 
 ```bash
+
 git clone https://github.com/frankherchet/zepp-mcp.git
 cd zepp-mcp
 uv sync --extra dev
+```
+
+## Setup with your Zepp account
+
+The normal setup path is now account login:
+
+```bash
 uv run zepp-mcp setup
 ```
 
-The setup wizard asks for:
+For a new configuration, press Enter to select `login`. Setup asks for:
 
-1. Zepp API base URL (default `https://api-mifit.zepp.com`)
-2. Zepp user ID
-3. Zepp app token (hidden input)
+1. account country code such as `DE` or `US`;
+2. Zepp account email or phone number (phone numbers should use international format);
+3. Zepp password via hidden terminal input.
 
-It verifies the credentials against the Zepp profile endpoint before saving them.
+The password is sent only to the Zepp/Huami authentication endpoint, held in memory for the login,
+and is **not persisted**. Successful login stores only the returned app token, user ID, API base URL
+and non-secret client settings in the local config file.
+
+The login provider first uses the current regional Zepp v2 flow. `--region auto` selects the EU or US
+cluster from the country code. If that protocol is unavailable, it falls back to the historical Huami
+account flow. Explicit credential rejection or HTTP 429 rate limiting does not trigger a second
+password attempt.
+
+If the account lives on a different cluster than expected, retry explicitly:
+
+```bash
+uv run zepp-mcp setup --auth login --country-code DE --region eu
+uv run zepp-mcp setup --auth login --country-code US --region us
+```
+
+Because Zepp does not publish this API, the login protocol can change without notice. Manual token
+setup remains available for that reason:
+
+```bash
+uv run zepp-mcp setup --auth token
+```
 
 ## Run over stdio
 
@@ -75,8 +103,8 @@ uv run zepp-mcp serve --transport http --host 0.0.0.0 --port 8000
 ```
 
 For deployment, put TLS/authentication in front of the MCP endpoint unless the server is only
-reachable on a trusted private network. The Zepp credentials are server-side and are never
-returned by the MCP tools.
+reachable on a trusted private network. The Zepp credentials are server-side and are never returned
+by the MCP tools.
 
 ## Environment configuration
 
@@ -85,12 +113,12 @@ Headless deployments can use environment variables instead of the local config f
 ```bash
 export ZEPP_APP_TOKEN='...'
 export ZEPP_USER_ID='...'
-export ZEPP_BASE_URL='https://api-mifit.zepp.com'
+export ZEPP_BASE_URL='https://api-mifit-de2.zepp.com'
 uv run zepp-mcp serve --transport http --host 0.0.0.0 --port 8000
 ```
 
-`ZEPP_APP_TOKEN` and `ZEPP_USER_ID` must be supplied together when overriding credentials.
-Optional variables are `ZEPP_REQUEST_TIMEOUT_MS`, `ZEPP_APP_NAME`, and `ZEPP_APP_PLATFORM`.
+`ZEPP_APP_TOKEN` and `ZEPP_USER_ID` must be supplied together when overriding credentials. Optional
+variables are `ZEPP_BASE_URL`, `ZEPP_REQUEST_TIMEOUT_MS`, `ZEPP_APP_NAME`, and `ZEPP_APP_PLATFORM`.
 
 Inspect the current local config without exposing the full token:
 
@@ -112,14 +140,13 @@ Checks authentication through `/users/-/profile` and returns a compact profile/c
 
 ### `list_workouts(cursor_track_id=null, page_count=1)`
 
-Reads `/v1/sport/run/history.json` and returns one or more complete Zepp result pages plus
-`next_track_id`. Complete pages are intentional because Zepp does not expose a reliably documented
-page-size parameter. Each summary contains the `trackid` and `source` used for detail.
+Reads `/v1/sport/run/history.json` one Zepp page at a time. Each summary contains the `trackid` and
+`source` used for workout detail. Pass the returned `next_track_id` as `cursor_track_id` to continue.
 
 ### `get_workout(track_id, source)`
 
-Reads `/v1/sport/run/detail.json`. Depending on the workout it can contain heart-rate trace,
-timing, laps, GPS/pace fields and sport-specific metrics.
+Reads `/v1/sport/run/detail.json`. Depending on the workout it can contain heart-rate trace, timing,
+laps, GPS/pace fields and sport-specific metrics.
 
 ## Development
 
