@@ -94,7 +94,7 @@ class ZeppClient:
             collected.extend(item for item in summaries if isinstance(item, dict))
 
             raw_next = data.get("next")
-            next_cursor = str(raw_next) if raw_next not in (None, "", 0, "0") else None
+            next_cursor = str(raw_next) if raw_next not in (None, "", -1, "-1", 0, "0") else None
             if not next_cursor or not summaries or next_cursor in seen_cursors:
                 break
             seen_cursors.add(next_cursor)

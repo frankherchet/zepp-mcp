@@ -68,7 +68,7 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
         else:
             payload = {
                 "code": 1,
-                "data": {"next": 0, "summary": [{"trackid": "b", "source": "watch"}]},
+                "data": {"next": -1, "summary": [{"trackid": "b", "source": "watch"}]},
             }
         return httpx.Response(200, json=payload)
 
@@ -85,6 +85,7 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
     assert calls == [None, "100"]
     assert [item["trackid"] for item in result["items"]] == ["a", "b"]
     assert result["count"] == 2
+    assert result["next_track_id"] is None
 
 
 @pytest.mark.asyncio
