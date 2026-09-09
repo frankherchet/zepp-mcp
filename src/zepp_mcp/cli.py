@@ -14,7 +14,7 @@ from typing import Any
 
 from zepp_mcp import __version__
 from zepp_mcp.auth import PasswordAuthProvider, ZeppAuthError, ZeppCredentials
-from zepp_mcp.client import ZeppClient
+from zepp_mcp.client import ZeppApiError, ZeppClient
 from zepp_mcp.config import (
     CREDENTIAL_ENV_NAMES,
     ConfigurationError,
@@ -343,7 +343,10 @@ def _verify_connection(settings: Settings) -> dict[str, Any]:
         async with ZeppClient(settings) as client:
             return await client.check_connection()
 
-    return asyncio.run(check())
+    try:
+        return asyncio.run(check())
+    except ZeppApiError as error:
+        raise ConfigurationError(f"Could not verify Zepp access: {error}") from error
 
 
 if __name__ == "__main__":

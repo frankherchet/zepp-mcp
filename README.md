@@ -136,7 +136,7 @@ uv run zepp-mcp config reset
 
 ### `zepp_status`
 
-Checks authentication through `/users/-/profile` and returns a compact profile/connection summary.
+Checks authentication through the workout-history endpoint and returns a compact connection summary.
 
 ### `list_workouts(cursor_track_id=null, page_count=1)`
 

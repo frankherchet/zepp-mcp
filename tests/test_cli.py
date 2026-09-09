@@ -8,7 +8,8 @@ import pytest
 
 import zepp_mcp.cli as cli
 from zepp_mcp.auth import ZeppCredentials
-from zepp_mcp.config import Settings
+from zepp_mcp.client import ZeppApiError
+from zepp_mcp.config import ConfigurationError, Settings
 
 
 def test_no_command_defaults_to_stdio_server(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -76,3 +77,22 @@ def test_login_setup_persists_only_derived_credentials(
     assert settings.base_url == "https://api-mifit-de2.zepp.com"
     assert "person@example.com" not in settings.as_config_values().values()
     assert "test-value" not in settings.as_config_values().values()
+
+
+def test_verify_connection_wraps_api_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings.model_validate({"ZEPP_APP_TOKEN": "test-token", "ZEPP_USER_ID": "42"})
+
+    class FailingClient:
+        async def __aenter__(self) -> FailingClient:
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            pass
+
+        async def check_connection(self) -> dict[str, Any]:
+            raise ZeppApiError("endpoint unavailable")
+
+    monkeypatch.setattr(cli, "ZeppClient", lambda _settings: FailingClient())
+
+    with pytest.raises(ConfigurationError, match="Could not verify Zepp access"):
+        cli._verify_connection(settings)

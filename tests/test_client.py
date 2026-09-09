@@ -26,8 +26,12 @@ async def test_check_connection_sends_auth_headers(settings: Settings) -> None:
         assert request.headers["apptoken"] == "test-token"
         assert request.headers["appPlatform"] == "web"
         assert request.headers["appname"] == "com.xiaomi.hm.health"
-        assert request.url.path == "/users/-/profile"
-        return httpx.Response(200, json={"data": {"userId": 42, "nickname": "Tester"}})
+        assert request.url.path == "/v1/sport/run/history.json"
+        assert request.url.params["userid"] == "42"
+        return httpx.Response(
+            200,
+            json={"code": 1, "data": {"next": 0, "summary": [{"trackid": "a"}]}},
+        )
 
     http = httpx.AsyncClient(
         base_url=settings.base_url,
@@ -45,7 +49,7 @@ async def test_check_connection_sends_auth_headers(settings: Settings) -> None:
         await http.aclose()
 
     assert result["connected"] is True
-    assert result["profile"] == {"userId": 42, "nickname": "Tester"}
+    assert result["workout_count_on_first_page"] == 1
 
 
 @pytest.mark.asyncio
@@ -115,6 +119,6 @@ async def test_api_error_is_raised(settings: Settings) -> None:
     client = ZeppClient(settings, http_client=http)
     try:
         with pytest.raises(ZeppApiError, match="bad token"):
-            await client.get_user_profile()
+            await client.list_workouts()
     finally:
         await http.aclose()

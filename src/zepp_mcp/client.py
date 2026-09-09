@@ -50,20 +50,14 @@ class ZeppClient:
             await self._http.aclose()
 
     async def check_connection(self) -> JsonObject:
-        """Verify credentials against the profile endpoint."""
-        profile = await self.get_user_profile()
+        """Verify credentials against the workout endpoint used by this MCP."""
+        workouts = await self.list_workouts()
         return {
             "connected": True,
             "user_id": self.settings.zepp_user_id,
             "base_url": self.settings.base_url,
-            "profile": _compact_profile(profile),
+            "workout_count_on_first_page": workouts["count"],
         }
-
-    async def get_user_profile(self) -> JsonObject:
-        """Return the authenticated Zepp user profile."""
-        payload = await self._get_json("users/-/profile")
-        data = payload.get("data")
-        return data if isinstance(data, dict) else payload
 
     async def list_workouts(
         self,
@@ -155,19 +149,3 @@ class ZeppClient:
             message = payload.get("message") or payload.get("msg") or "unknown Zepp API error"
             raise ZeppApiError(f"Zepp API error {code}: {message}")
         return payload
-
-
-def _compact_profile(profile: JsonObject) -> JsonObject:
-    """Return only useful non-secret profile fields for the status tool."""
-    allowed = (
-        "userId",
-        "userid",
-        "nickname",
-        "region",
-        "country",
-        "height",
-        "weight",
-        "gender",
-        "birthday",
-    )
-    return {key: profile[key] for key in allowed if key in profile}
