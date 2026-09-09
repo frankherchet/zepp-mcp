@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from types import TracebackType
 from typing import Any, TypeAlias
+from uuid import uuid4
 
 import httpx
 
@@ -12,14 +13,7 @@ from zepp_mcp.config import Settings
 
 JsonObject: TypeAlias = dict[str, Any]
 
-WORKOUT_HISTORY_START = "1451577600"
-WORKOUT_SOURCES = (
-    "run.watch.huami.com,run.watch.everest.huami.com,run.watch.everests.huami.com,"
-    "run.watch.qogir.huami.com,run.watch.xihu.huami.com,run.watch.xihue.huami.com,"
-    "run.watch.xihuea.huami.com,run.watch.xihu.disney.huami.com,"
-    "run.watch.everest2.huami.com,run.405.huami.com,run.410.huami.com,"
-    "run.411.huami.com,run.412.huami.com,run.413.huami.com"
-)
+WORKOUT_HISTORY_COUNT = "20"
 
 
 class ZeppApiError(RuntimeError):
@@ -77,26 +71,23 @@ class ZeppClient:
     ) -> JsonObject:
         """List one or more complete workout-history pages.
 
-        Zepp exposes a track-id cursor but no reliably documented page-size parameter.
-        Returning complete pages avoids skipping workouts when a caller asks for fewer items
-        than Zepp happens to return in one response.
+        Zepp exposes a track-id cursor and returns a fixed-size page from the current app API.
         """
         if not 1 <= page_count <= 10:
             raise ValueError("page_count must be between 1 and 10")
 
         collected: list[JsonObject] = []
-        cursor = cursor_track_id or WORKOUT_HISTORY_START
+        cursor = cursor_track_id or str(int(time.time()))
         next_cursor: str | None = None
         seen_cursors: set[str] = set()
-        stop_track_id = str(int(time.time()))
 
         for _ in range(page_count):
             params = {
+                "r": str(uuid4()),
+                "trackid": cursor,
+                "count": WORKOUT_HISTORY_COUNT,
                 "userid": self.settings.zepp_user_id,
-                "source": WORKOUT_SOURCES,
-                "count": "1000",
-                "startTrackId": cursor,
-                "stopTrackId": stop_track_id,
+                "type": "0",
             }
             payload = await self._get_json("v1/sport/run/history.json", params=params)
             data = payload.get("data")
@@ -110,7 +101,12 @@ class ZeppClient:
 
             raw_next = data.get("next")
             next_cursor = str(raw_next) if raw_next not in (None, "", -1, "-1", 0, "0") else None
-            if not next_cursor or not summaries or next_cursor in seen_cursors:
+            if (
+                not next_cursor
+                or not summaries
+                or next_cursor == cursor
+                or next_cursor in seen_cursors
+            ):
                 break
             seen_cursors.add(next_cursor)
             cursor = next_cursor
@@ -130,7 +126,11 @@ class ZeppClient:
             raise ValueError("source must not be empty")
         payload = await self._get_json(
             "v1/sport/run/detail.json",
-            params={"trackid": track_id.strip(), "source": source.strip()},
+            params={
+                "trackid": track_id.strip(),
+                "source": source.strip(),
+                "userid": self.settings.zepp_user_id,
+            },
         )
         data = payload.get("data")
         return data if isinstance(data, dict) else payload

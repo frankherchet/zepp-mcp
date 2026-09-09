@@ -57,13 +57,13 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
     calls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        cursor = request.url.params["startTrackId"]
+        cursor = request.url.params["trackid"]
         calls.append(cursor)
         assert request.url.params["userid"] == "42"
-        assert request.url.params["count"] == "1000"
-        assert request.url.params["source"].startswith("run.watch.huami.com")
-        assert request.url.params["stopTrackId"].isdigit()
-        if cursor == "1451577600":
+        assert request.url.params["count"] == "20"
+        assert request.url.params["type"] == "0"
+        assert request.url.params["r"]
+        if len(calls) == 1:
             payload = {
                 "code": 1,
                 "data": {"next": 100, "summary": [{"trackid": "a", "source": "watch"}]},
@@ -85,7 +85,8 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
     finally:
         await http.aclose()
 
-    assert calls == ["1451577600", "100"]
+    assert len(calls) == 2
+    assert calls[1] == "100"
     assert [item["trackid"] for item in result["items"]] == ["a", "b"]
     assert result["count"] == 2
     assert result["next_track_id"] is None
@@ -97,6 +98,7 @@ async def test_get_workout_uses_track_and_source(settings: Settings) -> None:
         assert request.url.path == "/v1/sport/run/detail.json"
         assert request.url.params["trackid"] == "abc"
         assert request.url.params["source"] == "watch"
+        assert request.url.params["userid"] == "42"
         return httpx.Response(200, json={"code": 1, "data": {"heart_rate": "1,2,3"}})
 
     http = httpx.AsyncClient(
