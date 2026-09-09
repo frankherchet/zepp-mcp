@@ -54,13 +54,16 @@ async def test_check_connection_sends_auth_headers(settings: Settings) -> None:
 
 @pytest.mark.asyncio
 async def test_list_workouts_follows_cursor(settings: Settings) -> None:
-    calls: list[str | None] = []
+    calls: list[str] = []
 
     def handler(request: httpx.Request) -> httpx.Response:
-        cursor = request.url.params.get("trackid")
+        cursor = request.url.params["startTrackId"]
         calls.append(cursor)
         assert request.url.params["userid"] == "42"
-        if cursor is None:
+        assert request.url.params["count"] == "1000"
+        assert request.url.params["source"].startswith("run.watch.huami.com")
+        assert request.url.params["stopTrackId"].isdigit()
+        if cursor == "1451577600":
             payload = {
                 "code": 1,
                 "data": {"next": 100, "summary": [{"trackid": "a", "source": "watch"}]},
@@ -82,7 +85,7 @@ async def test_list_workouts_follows_cursor(settings: Settings) -> None:
     finally:
         await http.aclose()
 
-    assert calls == [None, "100"]
+    assert calls == ["1451577600", "100"]
     assert [item["trackid"] for item in result["items"]] == ["a", "b"]
     assert result["count"] == 2
     assert result["next_track_id"] is None

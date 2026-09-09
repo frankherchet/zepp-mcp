@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from types import TracebackType
 from typing import Any, TypeAlias
 
@@ -10,6 +11,15 @@ import httpx
 from zepp_mcp.config import Settings
 
 JsonObject: TypeAlias = dict[str, Any]
+
+WORKOUT_HISTORY_START = "1451577600"
+WORKOUT_SOURCES = (
+    "run.watch.huami.com,run.watch.everest.huami.com,run.watch.everests.huami.com,"
+    "run.watch.qogir.huami.com,run.watch.xihu.huami.com,run.watch.xihue.huami.com,"
+    "run.watch.xihuea.huami.com,run.watch.xihu.disney.huami.com,"
+    "run.watch.everest2.huami.com,run.405.huami.com,run.410.huami.com,"
+    "run.411.huami.com,run.412.huami.com,run.413.huami.com"
+)
 
 
 class ZeppApiError(RuntimeError):
@@ -75,14 +85,19 @@ class ZeppClient:
             raise ValueError("page_count must be between 1 and 10")
 
         collected: list[JsonObject] = []
-        cursor = cursor_track_id
+        cursor = cursor_track_id or WORKOUT_HISTORY_START
         next_cursor: str | None = None
         seen_cursors: set[str] = set()
+        stop_track_id = str(int(time.time()))
 
         for _ in range(page_count):
-            params: dict[str, str] = {"userid": self.settings.zepp_user_id}
-            if cursor:
-                params["trackid"] = cursor
+            params = {
+                "userid": self.settings.zepp_user_id,
+                "source": WORKOUT_SOURCES,
+                "count": "1000",
+                "startTrackId": cursor,
+                "stopTrackId": stop_track_id,
+            }
             payload = await self._get_json("v1/sport/run/history.json", params=params)
             data = payload.get("data")
             if not isinstance(data, dict):
